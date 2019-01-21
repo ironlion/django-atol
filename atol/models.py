@@ -19,7 +19,6 @@ from atol.exceptions import NoEmailAndPhoneError
 
 logger = logging.getLogger(__name__)
 
-
 ReceiptStatus = Choices(
     ('created', _('Ожидает инициации в системе оператора')),
     ('initiated', _('Иницирован в системе оператора')),
@@ -50,6 +49,7 @@ class Receipt(models.Model):
     user_phone = models.CharField(_('Телефон пользователя'), max_length=32, null=True)
     purchase_price = models.DecimalField(_('Цена покупки'), max_digits=8, decimal_places=2, null=True)
     purchase_name = models.TextField(_('Наименование покупки'), null=True)
+    purchase_items = JSONField(_('Позиции чека'), null=True)
 
     class Meta:
         verbose_name = _('Чек Атола')
@@ -98,9 +98,30 @@ class Receipt(models.Model):
         params = {
             'timestamp': self.created_at.isoformat(),
             'transaction_uuid': str(self.internal_uuid),
-            'purchase_price': float(self.purchase_price),
-            'purchase_name': self.purchase_name or 'Оплата подписки'
+            'purchase_name': self.purchase_name or 'Оплата подписки',
         }
+
+        if self.purchase_items:
+            params['purchase_price'] = 0
+            params['purchase_items'] = []
+            for i in self.purchase_items:
+                sum = i['price'] * i['quantity']
+                params['purchase_items'].append({
+                    'name': i['name'],
+                    'price': i['price'],
+                    'quantity': i['quantity'],
+                    'sum': sum,
+                })
+                params['purchase_price'] += sum
+        else:
+            params['purchase_price'] = float(self.purchase_price)
+            params['purchase_items'] = [{
+                'name': params['purchase_name'],
+                'price': params['purchase_price'],
+                'quantity': 1,
+                'sum': params['purchase_price'],
+            }]
+
         if self.user_email:
             params['user_email'] = self.user_email
         elif self.user_phone:

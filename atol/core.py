@@ -189,6 +189,18 @@ class AtolAPI(object):
         if isinstance(timestamp, str):
             timestamp = parse_date(timestamp)
 
+        for i in params['purchase_items']:
+            i.update({
+                'payment_method ': settings.RECEIPTS_ATOL_PAYMENT_METHOD,
+                'payment_object': settings.RECEIPTS_ATOL_PAYMENT_OBJECT,
+            })
+            if 'vat' not in i:
+                i.update({
+                    'vat': {
+                        'type': settings.RECEIPTS_ATOL_TAX_NAME,
+                    },
+                })
+
         request_data = {
             'external_id': params['transaction_uuid'],
             'timestamp': timestamp.strftime('%d.%m.%Y %H:%M:%S'),
@@ -200,17 +212,7 @@ class AtolAPI(object):
                     'inn': settings.RECEIPTS_ATOL_INN,
                     'payment_address': settings.RECEIPTS_ATOL_PAYMENT_ADDRESS,
                 },
-                'items': [{
-                    'name': params['purchase_name'],
-                    'price': purchase_price,
-                    'quantity': 1,
-                    'sum': purchase_price,
-                    'payment_method ': settings.RECEIPTS_ATOL_PAYMENT_METHOD,
-                    'payment_object': settings.RECEIPTS_ATOL_PAYMENT_OBJECT,
-                    'vat': {
-                        'type': settings.RECEIPTS_ATOL_TAX_NAME,
-                    },
-                }],
+                'items': params['purchase_items'],
                 'payments': [{
                     'sum': purchase_price,
                     'type': 1,
